@@ -99,6 +99,7 @@ class OperatingSystem:
         cmd_result = typed_node.execute(cmd="lsb_release -d", no_error_log=True)
         yield get_matched_str(cmd_result.stdout, cls.__lsb_release_pattern)
 
+        # It covers distros like ClearLinux too
         cmd_result = typed_node.execute(cmd="cat /etc/os-release", no_error_log=True)
         yield get_matched_str(cmd_result.stdout, cls.__os_release_pattern_name)
         yield get_matched_str(cmd_result.stdout, cls.__os_release_pattern_id)
@@ -130,7 +131,6 @@ class OperatingSystem:
         # try best for some suse derives, like netiq
         cmd_result = typed_node.execute(cmd="cat /etc/SuSE-release", no_error_log=True)
         yield get_matched_str(cmd_result.stdout, cls.__suse_release_pattern)
-
 
 class Windows(OperatingSystem):
     def __init__(self, node: Any) -> None:
