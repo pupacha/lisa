@@ -80,3 +80,17 @@ class Gpu(AzureFeatureMixin, features.Gpu):
         if not isinstance(self._node.os, supported_distro):
             return False
         return True
+
+
+class Sriov(AzureFeatureMixin, features.Sriov):
+    def _initialize(self, *args: Any, **kwargs: Any) -> None:
+        super()._initialize(*args, **kwargs)
+        self._initialize_information(self._node)
+
+    def _is_supported(self) -> bool:
+        if (
+            self._node.capability.features
+            and Sriov.name() in self._node.capability.features
+        ):
+            return True
+        return False

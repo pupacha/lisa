@@ -72,7 +72,7 @@ class AzureNodeSchema:
     nic_count: int = 1
     # for marketplace image, which need to accept terms
     purchase_plan: Optional[AzureVmPurchasePlanSchema] = None
-
+    enable_sriov: bool = True
     _marketplace: InitVar[Optional[AzureVmMarketplaceSchema]] = None
 
     @property

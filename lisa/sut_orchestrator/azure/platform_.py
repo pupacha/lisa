@@ -264,7 +264,12 @@ class AzurePlatform(Platform):
 
     @classmethod
     def supported_features(cls) -> List[Type[Feature]]:
-        return [features.StartStop, features.SerialConsole]
+        return [
+            features.Gpu,
+            features.SerialConsole,
+            features.Sriov,
+            features.StartStop,
+        ]
 
     def _prepare_environment(  # noqa: C901
         self, environment: Environment, log: Logger
@@ -850,7 +855,6 @@ class AzurePlatform(Platform):
             elif not azure_node_runbook.marketplace:
                 # set to default marketplace, if nothing specified
                 azure_node_runbook.marketplace = AzureVmMarketplaceSchema()
-
             if azure_node_runbook.marketplace:
                 # resolve Latest to specified version
                 azure_node_runbook.marketplace = self._parse_marketplace_image(
@@ -860,6 +864,31 @@ class AzurePlatform(Platform):
                 azure_node_runbook.purchase_plan = self._process_marketplace_image_plan(
                     azure_node_runbook.location, azure_node_runbook.marketplace
                 )
+
+            if azure_node_runbook.marketplace:
+                # by default, set image sriov capability as false
+                # get image sriov capability from API
+                image_sriov_capability = False
+                image_sriov_capability = self._get_image_sriov_capability(
+                    azure_node_runbook.location, azure_node_runbook.marketplace
+                )
+                # when selected size has sriov capability, but image doesn't have sriov
+                # capability, remove sriov feature, and set it as false in node
+                # runbook, then sriov is disabled in template.
+                if (
+                    node.capability.features
+                    and features.Sriov.name() in node.capability.features
+                    and not image_sriov_capability
+                ):
+                    azure_node_runbook.enable_sriov = False
+                    node.capability.features.remove(features.Sriov.name())
+                    log.debug(
+                        "sriov is capable on the size, but not capable in the image, "
+                        "switch to use synthetic network."
+                    )
+            else:
+                # by default, set vhd sriov capability as true
+                image_sriov_capability = True
             # save parsed runbook back, for example, the version of marketplace may be
             # parsed from latest to a specified version.
             node.capability.set_extended_runbook(azure_node_runbook)
@@ -1182,7 +1211,10 @@ class AzurePlatform(Platform):
             elif name == "GPUs":
                 node_space.gpu_count = int(sku_capability.value)
                 # update features list if gpu feature is supported
-                node_space.features.update(features.Gpu.name())
+                node_space.features.update([features.Gpu.name()])
+            elif name == "AcceleratedNetworkingEnabled":
+                # update features list if sriov feature is supported
+                node_space.features.update([features.Sriov.name()])
 
         # all nodes support following features
         node_space.features.update(
@@ -1290,3 +1322,23 @@ class AzurePlatform(Platform):
                 publisher=image_info.plan.publisher,
             )
         return plan
+
+    def _get_image_sriov_capability(
+        self, location: str, marketplace: AzureVmMarketplaceSchema
+    ) -> bool:
+        compute_client = get_compute_client(self)
+        new_marketplace = copy.copy(marketplace)
+        image_resource = compute_client.virtual_machine_images.get(
+            location=location,
+            publisher_name=new_marketplace.publisher,
+            offer=new_marketplace.offer,
+            skus=new_marketplace.sku,
+            version=new_marketplace.version,
+        )
+        enable_sriov = True
+        if image_resource.features:
+            for image_feature in image_resource.features:
+                name = image_feature.name
+                if name == "IsAcceleratedNetworkSupported":
+                    enable_sriov = image_feature.value
+        return enable_sriov
