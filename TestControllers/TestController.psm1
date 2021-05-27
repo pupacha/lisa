@@ -571,6 +571,7 @@ Class TestController {
 			}
 			$this.GetSystemBasicLogs($VmData, $global:user, $global:password, $CurrentTestData, $currentTestResult, $this.EnableTelemetry) | Out-Null
 			$SystemLogsTelemetryDataCollected = $?
+			Write-LogInfo "================ SystemLogsTelemetryDataCollected =  $SystemLogsTelemetryDataCollected."
 
 			Write-LogInfo "==> Run test cleanup script if defined."
 			$collectDetailLogs = (!$this.TestCasePassStatus.contains($currentTestResult.TestResult) -or $this.CustomParams.VerifyKernelLogs -eq "True") -and ($CurrentTestData.SetupConfig.OSType -notcontains "Windows") -and ((Is-VmAlive -AllVMDataObject $VmData -MaxRetryCount 5) -eq "True")
@@ -596,7 +597,10 @@ Class TestController {
 			Write-LogErr "Source: Line $line in script $scriptName."
 		}
 		finally {
+			Write-LogInfo "================ SystemLogsTelemetryDataCollected2 =  $SystemLogsTelemetryDataCollected."
 			if (!$SystemLogsTelemetryDataCollected) {
+				Write-LogInfo "================ SystemLogsTelemetryDataCollected3 =  $SystemLogsTelemetryDataCollected."
+				Write-LogInfo "================ LogDir =  $global:LogDir."
 				$this.GetSystemBasicLogs($VmData, $global:user, $global:password, $CurrentTestData, $currentTestResult, $this.EnableTelemetry) | Out-Null
 			}
 			# Set back the LogDir to the parent folder, in order to record Test Summary
