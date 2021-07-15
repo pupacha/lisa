@@ -162,7 +162,7 @@ function Main {
 
     # Give the host a few seconds to record the event
     Write-LogInfo "Waiting 60 seconds to record the event..."
-    Start-Sleep -Seconds 60
+    Start-Sleep -Seconds 500
 
     if ($TestPlatform -eq "HyperV") {
         if ((-not $RHEL7_Above) -and ($BuildNumber -eq "14393")){
